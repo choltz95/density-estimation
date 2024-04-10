@@ -9,6 +9,7 @@ from scipy.special import erf, erfinv
 from matplotlib import pyplot as plt
 from scipy.stats import chi2, spearmanr
 from sklearn.decomposition import PCA
+from scipy.linalg import svd
 
 default_opts = {
     'd': 2,
@@ -65,6 +66,8 @@ def compute_C(bx, h, d=2, H=0):
     B = compute_B(bx, h, d, H)
     return (B-np.sqrt(B**2 -4*(np.pi**d)*A), 2*A)
     
+def epanechnikov_kernel(dist, eps):
+    return (1-dist**2/eps)*(dist > 0)*(dist < np.sqrt(eps))
 
 def estimate_bx(X, opts=default_opts, ret_K_D=False):
     d = opts['d']
@@ -117,11 +120,21 @@ def estimate_bx(X, opts=default_opts, ret_K_D=False):
         temp = X-X[i,:][None,:]
         mu_hN_norm[i] = np.linalg.norm(K.getrow(i).dot(temp))
 
+    eps_pca = np.max(neigh_dist)**2
     mu_norm = np.zeros(X.shape[0])
     for i in range(X.shape[0]):
         if opts['local_pca']:
+#             n_i = neigh_ind[i]
+#             X_i = X[n_i,:].T # p x N_i
+#             X_i = X_i - X[i,:][:,None]
+#             X_i_norm = np.linalg.norm(X_i, axis=0) # N_i dimensional
+#             D_i = np.sqrt(epanechnikov_kernel(X_i_norm, eps_pca)) #N_i dimensional
+#             B_i = X_i * D_i[None,:]
+#             U_i, Sigma_i, V_iT = svd(B_i)
+#             temp = Sigma_i[:d][:,None]*V_iT[:d,:]
+#             temp = temp.T
             X_i_nbrs = X[neigh_ind[i,:].tolist()+[i],:]
-            pca = PCA(n_components=2)
+            pca = PCA(n_components=d)
             y = pca.fit_transform(X_i_nbrs)
             X_rec = pca.inverse_transform(y)
             temp = X_rec[:-1,:] - X_rec[-1,:][None,:]
